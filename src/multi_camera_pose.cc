@@ -63,9 +63,9 @@ int main(int argc, char** argv) {
 
   std::cout << " usage: " << argv[0] << " images_with_intrinsics outfile "
             << "inlier_threshold num_lo_steps invert_Y_Z points_centered "
-            << " undistortion_needed sequence_length [match-file postfix]"
+            << " undistortion_needed sequence_length matches_dir [match-file postfix]"
             << std::endl;
-  if (argc < 9) return -1;
+  if (argc < 10) return -1;
 
   bool invert_Y_Z = static_cast<bool>(atoi(argv[5]));
   bool points_centered = static_cast<bool>(atoi(argv[6]));
@@ -88,9 +88,13 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  std::string matches_dir = std::string(argv[9]);
+  if (matches_dir[matches_dir.size()-1] != '/')
+    matches_dir = matches_dir + "/";
+
   std::string matchfile_postfix = ".individual_datasets.matches.txt";
-  if (argc >= 10) {
-    matchfile_postfix = std::string(argv[9]);
+  if (argc >= 11) {
+    matchfile_postfix = std::string(argv[10]);
   }
 
   std::vector<double> orientation_error(kNumQuery,
@@ -133,6 +137,7 @@ int main(int argc, char** argv) {
     std::vector<int> camera_ids;
     for (int j = i; j < cams_end; ++j) {
       std::string matchfile(query_data[j].name);
+      matchfile = matches_dir + matchfile;
       matchfile.append(matchfile_postfix);
       
       Points2D points2D;
