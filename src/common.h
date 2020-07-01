@@ -242,6 +242,7 @@ bool LoadMatches(const std::string& filename, bool invert_Y_Z,
   return true;
 }
 
+// NOTE: seems like this function  acutually converts the query poses into poses  wrt first query pose!
 bool AssembleMultiCameraRig(const Queries& queries,
                             const std::vector<int>& indices,
                             MultiCameraRig* rig) {
@@ -260,16 +261,16 @@ bool AssembleMultiCameraRig(const Queries& queries,
   rig->cameras[0].focal_x = queries[indices[0]].focal_x;
   rig->cameras[0].focal_y = queries[indices[0]].focal_y;
   
-  Eigen::Matrix3d R0(queries[indices[0]].q);
-  Eigen::Vector3d t0 = -R0 * queries[indices[0]].c;
+  Eigen::Matrix3d R0(queries[indices[0]].q); // what is this?
+  Eigen::Vector3d t0 = -R0 * queries[indices[0]].c; // what is this?
   
   for (int i = 1; i < kNumCams; ++i) {
     Eigen::Matrix3d Ri(queries[indices[i]].q);
     Eigen::Vector3d ti = -Ri * queries[indices[i]].c;
     
-    Eigen::Matrix3d R = Ri * R0.transpose();
-    Eigen::Vector3d t = ti - R * t0;
-    Eigen::Vector3d c = -R.transpose() * t;
+    Eigen::Matrix3d R = Ri * R0.transpose(); // what is this?
+    Eigen::Vector3d t = ti - R * t0; // what is this?
+    Eigen::Vector3d c = -R.transpose() * t; // what is this?
     
     rig->cameras[i].R = R;
     rig->cameras[i].t = t;
