@@ -81,7 +81,6 @@ int main(int argc, char** argv) {
   }
   const int kNumQuery = static_cast<int>(query_data.size());
   std::cout << " Found " << kNumQuery << " query images " << std::endl;
-
   std::ofstream ofs(argv[2], std::ios::out);
   if (!ofs.is_open()) {
     std::cerr << " ERROR: Cannot write to " << argv[2] << std::endl;
@@ -231,16 +230,24 @@ int main(int argc, char** argv) {
     std::cout << best_model.alpha << std::endl;
     
     // Updates the poses of all cameras in the rig.
+    // NOTE: rig can have 1 to k cameras, depending on i
     for (int j = i; j < cams_end; ++j) {
       if (ransac_stats.best_model_score < best_poses[j].score) {
         best_poses[j].num_inliers = num_ransac_inliers;
         best_poses[j].score = ransac_stats.best_model_score;
-        Eigen::Matrix3d R = rig.cameras[j - i].R * best_model.R;
-        Eigen::Vector3d t = rig.cameras[j - i].R * best_model.t + best_model.alpha * rig.cameras[j - i].t;
-        Eigen::Vector3d c = -R.transpose() * t;
-        best_poses[j].R = R;
+        // best_model.R: model bases to rig bases
+        // rig.cameras[j-i].R: rig bases to j-i-th camera bases
+        Eigen::Matrix3d R = rig.cameras[j - i].R * best_model.R; // model bases to j-i-th camera bases
+        // best_model.t: PROBABLY translation from rig origin to model origin, wrt rig bases/CS
+        // best_model.alpha: scale estimation
+        // rig.cameras[j-i].t: translation from j-i-th camera origin to rig origin, wrt j-i-th camera bases/CS
+        // rig.cameras[j - i].R * best_model.t: probably translation from rig origin to model origin, wrt j-i-th camera bases
+        Eigen::Vector3d t = rig.cameras[j - i].R * best_model.t + best_model.alpha * rig.cameras[j - i].t; // translation from j-i-th camera origin to model origin, wrt j-i-th camera bases/CS
+        Eigen::Vector3d c = -R.transpose() * t; // translation from model origin to j-i-th camera origin, wrt model bases/CS
+
+        best_poses[j].R = R; // columns are model bases wrt j-th camera bases, i.e. R: model -> j-th camera (bases)
         best_poses[j].t = t;
-        best_poses[j].c = c;
+        best_poses[j].c = c; // j-th camera position wrt model CS
       }
     }
   }
@@ -255,11 +262,16 @@ int main(int argc, char** argv) {
     q.normalize();
 
     // Measures the pose error.
-    double c_error = (c - query_data[i].c).norm();
-    Eigen::Matrix3d R1 = R.transpose();
-    Eigen::Matrix3d R2(query_data[i].q);
-    Eigen::AngleAxisd aax(R1 * R2);
-    double q_error = aax.angle() * 180.0 / M_PI;
+    double c_error = (c - query_data[i].c).norm(); // i-th camera position wrt model CS, minus i-th camera position wrt Omega
+                                                   // why are we comparing two points in different CS? it doesnt makes sense, to
+                                                   // require the query camera poses to be wrt model - then I obviously would not
+                                                   // need to use this program
+    Eigen::Matrix3d R1 = R.transpose(); // i-th camera to/wrt model (bases)
+    std::cout << "best_poses[" << i << "].R:" << std::endl << R1 << std::endl << std::endl;
+    Eigen::Matrix3d R2(query_data[i].q); // i-th camera to/wrt Omega (bases)
+    Eigen::AngleAxisd aax(R1 * R2); // it just wraps the input R1*R2
+                                    // R1*R2: ???
+    double q_error = aax.angle() * 180.0 / M_PI; // just convert the angle from [rad] to [deg]
     orientation_error[i] = q_error;
     position_error[i] = c_error;
 
