@@ -242,7 +242,10 @@ bool LoadMatches(const std::string& filename, bool invert_Y_Z,
   return true;
 }
 
-// NOTE: seems like this function  acutually converts the query poses into poses  wrt first query pose!
+// queries: their poses are wrt some CS (Omega)
+// query.c: camera origin wrt Omega
+// query.q: camera orientation wrt Omega
+// no need to provide relative poses wrt first query pose, because it is actually performed here
 bool AssembleMultiCameraRig(const Queries& queries,
                             const std::vector<int>& indices,
                             MultiCameraRig* rig) {
@@ -261,20 +264,22 @@ bool AssembleMultiCameraRig(const Queries& queries,
   rig->cameras[0].focal_x = queries[indices[0]].focal_x;
   rig->cameras[0].focal_y = queries[indices[0]].focal_y;
   
-  Eigen::Matrix3d R0(queries[indices[0]].q); // what is this?
-  Eigen::Vector3d t0 = -R0 * queries[indices[0]].c; // what is this?
+  Eigen::Matrix3d R0(queries[indices[0]].q); // holoLensCS bases to first camera bases
+  Eigen::Vector3d t0 = -R0 * queries[indices[0]].c; // translation from first camera origin to holoLens origin, wrt first camera bases
   
   for (int i = 1; i < kNumCams; ++i) {
-    Eigen::Matrix3d Ri(queries[indices[i]].q);
-    Eigen::Vector3d ti = -Ri * queries[indices[i]].c;
+    Eigen::Matrix3d Ri(queries[indices[i]].q); // holoLensCS bases to i-th camera bases
+    Eigen::Vector3d ti = -Ri * queries[indices[i]].c; // translation from i-th camera origin to holoLens origin, wrt i-th camera bases
+
     
-    Eigen::Matrix3d R = Ri * R0.transpose(); // what is this?
-    Eigen::Vector3d t = ti - R * t0; // what is this?
-    Eigen::Vector3d c = -R.transpose() * t; // what is this?
+    Eigen::Matrix3d R = Ri * R0.transpose(); // first camera bases to i-th camera bases
+    Eigen::Vector3d t = ti - R * t0; // from (translation from first camera origin into holoLens origin) to (translation from i-th camera origin into holoLens origin), all wrt i-th camera bases
+                                     // aka translation from i-th camera origin to first camera origin, wrt i-th camera bases/CS
+    Eigen::Vector3d c = -R.transpose() * t; // translation from first camera origin to i-th camera origin, wrt first camera bases/CS
     
-    rig->cameras[i].R = R;
+    rig->cameras[i].R = R; // rig wrt i-th camera, i.e. rig -> i-th camera
     rig->cameras[i].t = t;
-    rig->cameras[i].c = c;
+    rig->cameras[i].c = c; // i-th camera wrt rig, i.e. i-th camera to rig
     
     rig->cameras[i].focal_x = queries[indices[i]].focal_x;
     rig->cameras[i].focal_y = queries[indices[i]].focal_y;
