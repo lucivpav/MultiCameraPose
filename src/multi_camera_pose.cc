@@ -242,19 +242,19 @@ int main(int argc, char** argv) {
       if (ransac_stats.best_model_score < best_poses[j].score) {
         best_poses[j].num_inliers = num_ransac_inliers;
         best_poses[j].score = ransac_stats.best_model_score;
-        // best_model.R: model bases to rig bases
+        // best_model.R: World bases to rig bases
         // rig.cameras[j-i].R: rig bases to j-i-th camera bases
-        Eigen::Matrix3d R = rig.cameras[j - i].R * best_model.R; // model bases to j-i-th camera bases
-        // best_model.t: PROBABLY translation from rig origin to model origin, wrt rig bases/CS
+        Eigen::Matrix3d R = rig.cameras[j - i].R * best_model.R; // World bases to j-i-th camera bases
+        // best_model.t: PROBABLY translation from rig origin to World origin, wrt rig bases/CS
         // best_model.alpha: scale estimation
         // rig.cameras[j-i].t: translation from j-i-th camera origin to rig origin, wrt j-i-th camera bases/CS
-        // rig.cameras[j - i].R * best_model.t: probably translation from rig origin to model origin, wrt j-i-th camera bases
-        Eigen::Vector3d t = rig.cameras[j - i].R * best_model.t + best_model.alpha * rig.cameras[j - i].t; // translation from j-i-th camera origin to model origin, wrt j-i-th camera bases/CS
-        Eigen::Vector3d c = -R.transpose() * t; // translation from model origin to j-i-th camera origin, wrt model bases/CS
+        // rig.cameras[j - i].R * best_model.t: probably translation from rig origin to World origin, wrt j-i-th camera bases
+        Eigen::Vector3d t = rig.cameras[j - i].R * best_model.t + best_model.alpha * rig.cameras[j - i].t; // translation from j-i-th camera origin to World origin, wrt j-i-th camera bases/CS
+        Eigen::Vector3d c = -R.transpose() * t; // translation from World origin to j-i-th camera origin, wrt World bases/CS
 
-        best_poses[j].R = R; // columns are model bases wrt j-th camera bases, i.e. R: model -> j-th camera (bases)
+        best_poses[j].R = R; // columns are World bases wrt j-th camera bases, i.e. R: World -> j-th camera (bases)
         best_poses[j].t = t;
-        best_poses[j].c = c; // j-th camera position wrt model CS
+        best_poses[j].c = c; // j-th camera position wrt World CS
       }
     }
   }
@@ -270,15 +270,15 @@ int main(int argc, char** argv) {
 
     // Measures the pose error.
     Eigen::Matrix3d OmegaToRigBases(query_data[0].q);
-    // best_model_full.R: model bases to rig bases
-    auto ROmegaToModel = best_model_full.R.transpose() * OmegaToRigBases;
+    // best_model_full.R: World bases to rig bases
+    auto ROmegaToWorld = best_model_full.R.transpose() * OmegaToRigBases;
     Eigen::Vector3d RigToOmegaOrigin = -OmegaToRigBases * query_data[0].c; // translation from rig origin to Omega origin, wrt rig bases
-    // best_model_full.t: PROBABLY translation from rig origin to model origin, wrt rig bases/CS
-    auto ModelToOmegaOriginWrtRig = RigToOmegaOrigin - best_model_full.t;
-    auto OmegaOriginWrtModel = best_model_full.R.transpose() * ModelToOmegaOriginWrtRig;
-    auto c2 = ROmegaToModel * query_data[i].c + OmegaOriginWrtModel;
+    // best_model_full.t: PROBABLY translation from rig origin to World origin, wrt rig bases/CS
+    auto WorldToOmegaOriginWrtRig = RigToOmegaOrigin - best_model_full.t;
+    auto OmegaOriginWrtWorld = best_model_full.R.transpose() * WorldToOmegaOriginWrtRig;
+    auto c2 = ROmegaToWorld * query_data[i].c + OmegaOriginWrtWorld;
     double c_error = (c - c2).norm();
-    Eigen::Matrix3d R1 = R.transpose(); // i-th camera to/wrt model (bases)
+    Eigen::Matrix3d R1 = R.transpose(); // i-th camera to/wrt World bases
     std::cout << "best_poses[" << i << "].R:" << std::endl << R1 << std::endl << std::endl;
     Eigen::Matrix3d R2(query_data[i].q); // Omega to/wrt i-th camera bases
     Eigen::AngleAxisd aax(R1 * (R2));
