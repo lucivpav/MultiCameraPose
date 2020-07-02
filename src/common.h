@@ -244,7 +244,7 @@ bool LoadMatches(const std::string& filename, bool invert_Y_Z,
 
 // queries: their poses are wrt some CS (Omega)
 // query.c: camera origin wrt Omega
-// query.q: camera orientation wrt Omega
+// query.q: Omega to camera bases
 // no need to provide relative poses wrt first query pose, because it is actually performed here
 // rig CS: the CS of the first camera in the sequence
 bool AssembleMultiCameraRig(const Queries& queries,

@@ -116,6 +116,8 @@ int main(int argc, char** argv) {
     best_poses[i].num_inliers = 0;
     best_poses[i].score = std::numeric_limits<double>::max();
   }
+
+  GenCamPose best_model_full;
   
   for (int i = 0; i < kNumQuery; ++i) {
     std::cout << std::endl << std::endl;
@@ -228,6 +230,11 @@ int main(int argc, char** argv) {
     if (num_ransac_inliers < 5) continue;
     
     std::cout << best_model.alpha << std::endl;
+
+    if (i == 0)
+    {
+      best_model_full = best_model;
+    }
     
     // Updates the poses of all cameras in the rig.
     // NOTE: rig can have 1 to k cameras, depending on i
@@ -262,10 +269,15 @@ int main(int argc, char** argv) {
     q.normalize();
 
     // Measures the pose error.
-    double c_error = (c - query_data[i].c).norm(); // i-th camera position wrt model CS, minus i-th camera position wrt Omega
-                                                   // why are we comparing two points in different CS? it doesnt makes sense, to
-                                                   // require the query camera poses to be wrt model - then I obviously would not
-                                                   // need to use this program
+    Eigen::Matrix3d OmegaToRigBases(query_data[0].q);
+    // best_model_full.R: model bases to rig bases
+    auto ROmegaToModel = best_model_full.R.transpose() * OmegaToRigBases;
+    Eigen::Vector3d RigToOmegaOrigin = -OmegaToRigBases * query_data[0].c; // translation from rig origin to Omega origin, wrt rig bases
+    // best_model_full.t: PROBABLY translation from rig origin to model origin, wrt rig bases/CS
+    auto ModelToOmegaOriginWrtRig = RigToOmegaOrigin - best_model_full.t;
+    auto OmegaOriginWrtModel = best_model_full.R.transpose() * ModelToOmegaOriginWrtRig;
+    auto c2 = ROmegaToModel * query_data[i].c + OmegaOriginWrtModel;
+    double c_error = (c - c2).norm();
     Eigen::Matrix3d R1 = R.transpose(); // i-th camera to/wrt model (bases)
     std::cout << "best_poses[" << i << "].R:" << std::endl << R1 << std::endl << std::endl;
     Eigen::Matrix3d R2(query_data[i].q); // i-th camera to/wrt Omega (bases)
