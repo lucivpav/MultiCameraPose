@@ -280,9 +280,8 @@ int main(int argc, char** argv) {
     double c_error = (c - c2).norm();
     Eigen::Matrix3d R1 = R.transpose(); // i-th camera to/wrt model (bases)
     std::cout << "best_poses[" << i << "].R:" << std::endl << R1 << std::endl << std::endl;
-    Eigen::Matrix3d R2(query_data[i].q); // i-th camera to/wrt Omega (bases)
-    Eigen::AngleAxisd aax(R1 * R2); // it just wraps the input R1*R2
-                                    // R1*R2: ???
+    Eigen::Matrix3d R2(query_data[i].q); // Omega to/wrt i-th camera bases
+    Eigen::AngleAxisd aax(R1 * (R2));
     double q_error = aax.angle() * 180.0 / M_PI; // just convert the angle from [rad] to [deg]
     orientation_error[i] = q_error;
     position_error[i] = c_error;
