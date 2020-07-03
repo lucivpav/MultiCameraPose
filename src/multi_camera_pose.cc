@@ -118,6 +118,7 @@ int main(int argc, char** argv) {
   }
 
   GenCamPose best_model_full;
+  MultiCameraRig rig_full;
   
   for (int i = 0; i < kNumQuery; ++i) {
     std::cout << std::endl << std::endl;
@@ -229,11 +230,12 @@ int main(int argc, char** argv) {
 
     if (num_ransac_inliers < 5) continue;
     
-    std::cout << best_model.alpha << std::endl;
+    std::cout << "best_model.alpha: " << best_model.alpha << std::endl;
 
     if (i == 0)
     {
       best_model_full = best_model;
+      rig_full = rig;
     }
     
     // Updates the poses of all cameras in the rig.
@@ -249,7 +251,9 @@ int main(int argc, char** argv) {
         // best_model.alpha: scale estimation
         // rig.cameras[j-i].t: translation from j-i-th camera origin to rig origin, wrt j-i-th camera bases/CS
         // rig.cameras[j - i].R * best_model.t: probably translation from rig origin to World origin, wrt j-i-th camera bases
-        Eigen::Vector3d t = rig.cameras[j - i].R * best_model.t + best_model.alpha * rig.cameras[j - i].t; // translation from j-i-th camera origin to World origin, wrt j-i-th camera bases/CS
+        double alpha = best_model.alpha;
+        //double alpha = 1.0; // THIS does not  influcence the end result!
+        Eigen::Vector3d t = rig.cameras[j - i].R * best_model.t + alpha * rig.cameras[j - i].t; // translation from j-i-th camera origin to World origin, wrt j-i-th camera bases/CS
         Eigen::Vector3d c = -R.transpose() * t; // translation from World origin to j-i-th camera origin, wrt World bases/CS
 
         best_poses[j].R = R; // columns are World bases wrt j-th camera bases, i.e. R: World -> j-th camera (bases)
@@ -272,14 +276,24 @@ int main(int argc, char** argv) {
     Eigen::Matrix3d OmegaToRigBases(query_data[0].q);
     // best_model_full.R: World bases to rig bases
     auto ROmegaToWorld = best_model_full.R.transpose() * OmegaToRigBases;
-    Eigen::Vector3d RigToOmegaOrigin = -OmegaToRigBases * query_data[0].c; // translation from rig origin to Omega origin, wrt rig bases
+    Eigen::Vector3d OmegaOriginWrtRigCS = -OmegaToRigBases * query_data[0].c; // translation from rig origin to Omega origin, wrt rig bases
     // best_model_full.t: PROBABLY translation from rig origin to World origin, wrt rig bases/CS
-    auto WorldToOmegaOriginWrtRig = RigToOmegaOrigin - best_model_full.t;
+    auto WorldToOmegaOriginWrtRig = OmegaOriginWrtRigCS - best_model_full.t;
     auto OmegaOriginWrtWorld = best_model_full.R.transpose() * WorldToOmegaOriginWrtRig;
+
+    // for debugging
+    auto cameraToRigOriginWrtOmega = OmegaToRigBases.transpose() * rig_full.cameras[i].R.transpose() * rig_full.cameras[i].t;
+    std::cout << "\nquery: " << query_data[i].name << std::endl;
+    std::cout << "cameraToRigOriginWrtOmega:\n" << cameraToRigOriginWrtOmega << std::endl;
+    auto WorldBasesWrtOmegaBases = ROmegaToWorld.transpose();
+    auto WorldOriginWrtOmegaCS = -WorldBasesWrtOmegaBases * OmegaOriginWrtWorld;
+    std::cout << "WorldBasesWrtOmegaBases:\n" << WorldBasesWrtOmegaBases << std::endl;
+    std::cout << "WorldOriginWrtOmegaCS:\n" << WorldOriginWrtOmegaCS << std::endl;
+
     auto c2 = ROmegaToWorld * query_data[i].c + OmegaOriginWrtWorld;
     double c_error = (c - c2).norm();
     Eigen::Matrix3d R1 = R.transpose(); // i-th camera to/wrt World bases
-    std::cout << "best_poses[" << i << "].R:" << std::endl << R1 << std::endl << std::endl;
+    //std::cout << "best_poses[" << i << "].R:" << std::endl << R1 << std::endl << std::endl;
     Eigen::Matrix3d R2(query_data[i].q); // Omega to/wrt i-th camera bases
     Eigen::AngleAxisd aax(R1 * (R2));
     double q_error = aax.angle() * 180.0 / M_PI; // just convert the angle from [rad] to [deg]
