@@ -117,6 +117,9 @@ int main(int argc, char** argv) {
     best_poses[i].score = std::numeric_limits<double>::max();
   }
 
+  std::vector<double> best_alphas(kNumQuery);
+  std::vector<Eigen::Vector3d> best_rig_cameras_t(kNumQuery);
+
   GenCamPose best_model_full;
   MultiCameraRig rig_full;
   
@@ -252,13 +255,16 @@ int main(int argc, char** argv) {
         // rig.cameras[j-i].t: translation from j-i-th camera origin to rig origin, wrt j-i-th camera bases/CS
         // rig.cameras[j - i].R * best_model.t: probably translation from rig origin to World origin, wrt j-i-th camera bases
         double alpha = best_model.alpha;
-        //double alpha = 1.0; // THIS does not  influcence the end result!
+        //double alpha = 1.0; // THIS does not  influcence the end result! why? because the multiplier on the rhs is typically zero
+        std::cout << "rig.cameras[j - i].t:\n" << rig.cameras[j - i].t << std::endl;
         Eigen::Vector3d t = rig.cameras[j - i].R * best_model.t + alpha * rig.cameras[j - i].t; // translation from j-i-th camera origin to World origin, wrt j-i-th camera bases/CS
         Eigen::Vector3d c = -R.transpose() * t; // translation from World origin to j-i-th camera origin, wrt World bases/CS
 
         best_poses[j].R = R; // columns are World bases wrt j-th camera bases, i.e. R: World -> j-th camera (bases)
         best_poses[j].t = t;
         best_poses[j].c = c; // j-th camera position wrt World CS
+        best_alphas[j] = alpha;
+        best_rig_cameras_t[j] = rig.cameras[j-i].t;
       }
     }
   }
@@ -284,11 +290,13 @@ int main(int argc, char** argv) {
     // for debugging
     auto cameraToRigOriginWrtOmega = OmegaToRigBases.transpose() * rig_full.cameras[i].R.transpose() * rig_full.cameras[i].t;
     std::cout << "\nquery: " << query_data[i].name << std::endl;
-    std::cout << "cameraToRigOriginWrtOmega:\n" << cameraToRigOriginWrtOmega << std::endl;
+    //std::cout << "cameraToRigOriginWrtOmega:\n" << cameraToRigOriginWrtOmega << std::endl;
     auto WorldBasesWrtOmegaBases = ROmegaToWorld.transpose();
     auto WorldOriginWrtOmegaCS = -WorldBasesWrtOmegaBases * OmegaOriginWrtWorld;
-    std::cout << "WorldBasesWrtOmegaBases:\n" << WorldBasesWrtOmegaBases << std::endl;
-    std::cout << "WorldOriginWrtOmegaCS:\n" << WorldOriginWrtOmegaCS << std::endl;
+    //std::cout << "WorldBasesWrtOmegaBases:\n" << WorldBasesWrtOmegaBases << std::endl;
+    //std::cout << "WorldOriginWrtOmegaCS:\n" << WorldOriginWrtOmegaCS << std::endl;
+    std::cout << "best_alphas[i]: " << best_alphas[i] << std::endl;
+    std::cout << "best_rig_cameras[i].t:\n" << best_rig_cameras_t[i] << std::endl;
 
     auto c2 = ROmegaToWorld * query_data[i].c + OmegaOriginWrtWorld;
     double c_error = (c - c2).norm();
