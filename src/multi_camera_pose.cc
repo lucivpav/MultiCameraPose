@@ -333,6 +333,10 @@ int main(int argc, char** argv) {
   std::cout << " Median position error: " << median_pos << "m "
             << " Median orientation error: " << median_rot << " deg"
             << std::endl;
+  std::cout << " Mean position error: "
+            << std::accumulate(position_error.begin(), position_error.end(), 0.0)/kNumQuery
+            << "m" << std::endl;
+
   for (int k = 0; k < kNumThresholds; ++k) {
     std::cout << " % images within " << position_thresholds[k] * 100.0
               << "cm and " << orientation_thresholds[k] << "deg: "
