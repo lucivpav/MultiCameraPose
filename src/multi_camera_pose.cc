@@ -297,11 +297,11 @@ int main(int argc, char** argv) {
       Eigen::Vector3d OmegaOriginWrtWorld = best_model_full.R.transpose() * WorldToOmegaOriginWrtRig;
 
       // for debugging
-      Eigen::Vector3d cameraToRigOriginWrtOmega = OmegaToRigBases.transpose() * rig_full.cameras[i].R.transpose() * rig_full.cameras[i].t;
+      //Eigen::Vector3d cameraToRigOriginWrtOmega = OmegaToRigBases.transpose() * rig_full.cameras[i].R.transpose() * rig_full.cameras[i].t;
       //std::cout << "\nquery: " << query_data[i].name << std::endl;
       //std::cout << "cameraToRigOriginWrtOmega:\n" << cameraToRigOriginWrtOmega << std::endl;
-      Eigen::Matrix3d WorldBasesWrtOmegaBases = ROmegaToWorld.transpose();
-      Eigen::Vector3d WorldOriginWrtOmegaCS = -WorldBasesWrtOmegaBases * OmegaOriginWrtWorld;
+      //Eigen::Matrix3d WorldBasesWrtOmegaBases = ROmegaToWorld.transpose();
+      //Eigen::Vector3d WorldOriginWrtOmegaCS = -WorldBasesWrtOmegaBases * OmegaOriginWrtWorld;
       //std::cout << "WorldBasesWrtOmegaBases:\n" << WorldBasesWrtOmegaBases << std::endl;
       //std::cout << "WorldOriginWrtOmegaCS:\n" << WorldOriginWrtOmegaCS << std::endl;
       //std::cout << "best_alphas[i]: " << best_alphas[i] << std::endl;

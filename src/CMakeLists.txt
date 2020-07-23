@@ -10,7 +10,7 @@ find_package (Eigen3 REQUIRED)
 
 find_package (PoseLib REQUIRED)
 
-find_package (Ceres REQUIRED)
+find_package (Ceres REQUIRED HINTS ${CERES_PATH})
 
 add_definitions (-march=native)
 
